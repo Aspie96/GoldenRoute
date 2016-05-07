@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>GoldenRoute | demo</title>
+		<script type="text/javascript" src="dot/dot.min.js"></script>
+		<script type="text/javascript" src="router.min.js"></script>
+		<script type="text/javascript">
+			var httpGetReq = function(url, callback) {
+				var xhr = new XMLHttpRequest();
+				xhr.onreadystatechange = function() {
+					if(xhr.readyState == 4 && xhr.status == 200) {
+						callback(xhr.responseText);
+					}
+				}
+				xhr.open("GET", url, true);
+				xhr.send();
+			}
+
+			httpGetReq("/template.html", function(response) {
+				var tempFn = doT.template(response);
+				var contentDiv = document.getElementById("content");
+				GoldenRoute.addRoute("/data/:d", function(params, query, callback) {
+					httpGetReq("/data/" + params.d + ".json", function(response) {
+						contentDiv.innerHTML = tempFn(JSON.parse(response));
+						callback(query.t);
+					});
+				});
+				GoldenRoute.addRoute("/myPage", function(params, query, callback) {
+					contentDiv.innerHTML = "My page";
+					callback("Page title");
+				});
+				GoldenRoute.start();
+			});
+		</script>
+	</head>
+	<body>
+		<a href="/data/data1?t=Data1">link 1</a>
+		<a href="/data/data2?t=Data2">link 2</a>
+		<a href="/myPage">link 3</a>
+		<div id="content"></id>
+	</body>
+</html>
