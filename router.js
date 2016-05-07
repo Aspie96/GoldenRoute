@@ -1,6 +1,6 @@
 // GoldenRoute
 // 2016, Valentino Giudice, https://github.com/Aspie96/GoldenRoute
-// Licensed under the MIT license.
+// Licensed under the MIT license: https://github.com/Aspie96/GoldenRoute/blob/master/LICENSE
 
 var GoldenRoute = (function() {
 	if(window.history && window.history.pushState) {
@@ -53,7 +53,7 @@ var GoldenRoute = (function() {
 			for(var i = 0; i < parts.length; i++) {
 				if(parts[i].indexOf(":") == 0) {
 					route.params.push(parts[i].slice(1));
-					parts[i] = "([a-zA-Z0-9\-_]+)"
+					parts[i] = "([a-zA-Z0-9\-_]+)";
 				} else {
 					parts[i] = parts[i];
 				}
@@ -69,7 +69,7 @@ var GoldenRoute = (function() {
 			document.addEventListener("click", function(e) {
 				if(e.target.tagName == "A") {
 					var href = e.target.getAttribute("href");
-					if(href.indexOf("/") == 0) {
+					if(/^[\\\/](?![\\\/])/.test(href)) {
 						var routeNpars = getRouteAndParams(href);
 						if(routeNpars) {
 							routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
@@ -84,7 +84,6 @@ var GoldenRoute = (function() {
 			addEventListener("popstate", function(e) {
 				var routeNpars = getRouteAndParams(location.pathname);
 				if(routeNpars) {
-					routeNpars.route.routeFunc(routeNpars.params, routeNpars.query);
 					routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
 						document.title = title;
 					});
