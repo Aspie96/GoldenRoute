@@ -9,6 +9,7 @@ var GoldenRoute = (function() {
 		var routes = [];
 
 		function getRouteAndParams(url) {
+			url = url.split("#")[0];
 			var parts = url.split("?");
 			var path = parts[0].replace(/[\\\/]+/g, "/");
 			var route = null;
@@ -45,6 +46,19 @@ var GoldenRoute = (function() {
 			}
 		}
 
+		function routeTo(route, pushState) {
+			var routeNpars = getRouteAndParams(route);
+			if(routeNpars) {
+				routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
+					if(pushState) {
+						history.pushState(null, title, route);
+					}
+					document.title = title;
+				});
+			}
+			return !!routeNpars;
+		}
+
 		retVal.addRoute = function(url, routeFunc) {
 			var route = {};
 			var parts = url.split("/");
@@ -63,40 +77,39 @@ var GoldenRoute = (function() {
 			route.pattern = new RegExp(pattern);
 			route.routeFunc = routeFunc;
 			routes.push(route);
-		}
+		};
 
 		retVal.start = function() {
 			document.addEventListener("click", function(e) {
 				if(e.target.tagName == "A") {
 					var href = e.target.getAttribute("href");
 					if(/^[\\\/](?![\\\/])/.test(href)) {
-						var routeNpars = getRouteAndParams(href);
-						if(routeNpars) {
-							routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
-								history.pushState(null, title, href);
-								document.title = title;
-							});
+						if(routeTo(href, true)) {
 							e.preventDefault();
 						}
 					}
 				}
 			}, false);
 			addEventListener("popstate", function(e) {
-				var routeNpars = getRouteAndParams(location.pathname);
-				if(routeNpars) {
-					routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
-						document.title = title;
-					});
-				} else {
+				if(!routeTo(location.pathname, false)) {
 					location.reload();
 				}
 			});
-		}
+		};
+
+		retVal.routeTo = function(route) {
+			if(!routeTo(route, true)) {
+				location.href = route;
+			}
+		};
 
 		return retVal;
 	}
 	return {
 		addRoute: function() { },
-		start: function() { }
+		start: function() { },
+		routeTo: function(route) {
+			location.href = route;
+		}
 	};
 })();
