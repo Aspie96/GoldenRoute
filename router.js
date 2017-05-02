@@ -1,5 +1,5 @@
 // GoldenRoute
-// 2016, Valentino Giudice, https://github.com/Aspie96/GoldenRoute
+// (c) 2016 - 2017, Valentino Giudice, https://github.com/Aspie96/GoldenRoute
 // Licensed under the MIT license: https://github.com/Aspie96/GoldenRoute/blob/master/LICENSE
 
 var GoldenRoute = (function() {
@@ -7,6 +7,9 @@ var GoldenRoute = (function() {
 		var retVal = {};
 
 		var routes = [];
+
+		var onRoutingHandler;
+		var onRoutedHandler;
 
 		function getRouteAndParams(url) {
 			url = url.split("#")[0];
@@ -30,9 +33,9 @@ var GoldenRoute = (function() {
 					for(var i = 0; i < parts.length; i++) {
 						var pair = parts[i].split("=");
 						if(pair[1]) {
-							query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+							query[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1].replace(/\+/g, " "));
 						} else {
-							query[decodeURIComponent(pair[0])] = null;
+							query[decodeURIComponent(pair[0])] = true;
 						}
 					}
 				}
@@ -49,14 +52,29 @@ var GoldenRoute = (function() {
 		function routeTo(route, pushState) {
 			var routeNpars = getRouteAndParams(route);
 			if(routeNpars) {
-				routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title) {
-					if(pushState) {
-						history.pushState(null, title, route);
+				if(onRoutingHandler && onRoutingHandler() === false) {
+					return true;
+				}
+				routeNpars.route.routeFunc(routeNpars.params, routeNpars.query, function(title, cancel) {
+					if(!cancel) {
+						document.title = title;
+						document.body.scrollTop = document.documentElement.scrollTop = 0;
+						document.body.scrollLeft = document.documentElement.scrollLeft = 0;
+						if(pushState) {
+							if((location.origin || (location.protocol + "//" + location.host)) + route == location.href) {
+								history.replaceState(null, title, route);
+							} else {
+								history.pushState(null, title, route);
+							}
+						}
+						if(onRoutedHandler) {
+							onRoutedHandler();
+						}
 					}
-					document.title = title;
 				});
+				return true;
 			}
-			return !!routeNpars;
+			return false;
 		}
 
 		retVal.addRoute = function(url, routeFunc) {
@@ -81,17 +99,31 @@ var GoldenRoute = (function() {
 
 		retVal.start = function() {
 			document.addEventListener("click", function(e) {
+				var href;
+				var target;
 				if(e.target.tagName == "A") {
-					var href = e.target.getAttribute("href");
-					if(/^[\\\/](?![\\\/])/.test(href)) {
+					href = e.target.getAttribute("href");
+					target = e.target.getAttribute("target");
+				} else if(e.target.parentNode.tagName == "A") {
+					href = e.target.parentNode.getAttribute("href");
+					target = e.target.parentNode.getAttribute("target");
+				}
+				if(href) {
+					if(target == "_blank" || (retVal.externalInBlank && /^(http:|https:|)\/\//i.test(href) && target != "_self")) {
+						e.preventDefault();
+						var wnd = window.open(href, "_blank");
+						wnd.opener = null;
+						e.target.blur();
+					} else if(/^[\\\/](?![\\\/])/.test(href)) {
 						if(routeTo(href, true)) {
 							e.preventDefault();
+							e.target.blur();
 						}
 					}
 				}
 			}, false);
 			addEventListener("popstate", function(e) {
-				if(!routeTo(location.pathname, false)) {
+				if(!routeTo(location.pathname + location.search, false)) {
 					location.reload();
 				}
 			});
@@ -103,6 +135,15 @@ var GoldenRoute = (function() {
 			}
 		};
 
+		retVal.onRouting = function(handler) {
+			onRoutingHandler = handler;
+		}
+		retVal.onRouted = function(handler) {
+			onRoutedHandler = handler;
+		}
+
+		retVal.externalInBlank = true;
+
 		return retVal;
 	}
 	return {
@@ -110,6 +151,8 @@ var GoldenRoute = (function() {
 		start: function() { },
 		routeTo: function(route) {
 			location.href = route;
-		}
+		},
+		onRouting: function() { },
+		onRouted: function() { }
 	};
 })();
